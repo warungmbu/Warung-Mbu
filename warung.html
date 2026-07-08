@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Inventori - Warung Mbu</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --background: #f8fafc;
+            --surface: #ffffff;
+            --text: #1e293b;
+            --border: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            background: var(--surface);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        h2 {
+            margin-top: 0;
+            color: var(--primary);
+            border-bottom: 2px solid var(--border);
+            padding-bottom: 10px;
+            font-size: 1.8rem;
+        }
+        
+        h2 span {
+            color: #64748b;
+            font-size: 1rem;
+            font-weight: normal;
+            display: block;
+            margin-top: 5px;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        input {
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            outline: none;
+            flex: 1;
+            min-width: 150px;
+        }
+
+        input:focus { border-color: var(--primary); }
+
+        button {
+            padding: 10px 16px;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        button:hover { background-color: #1d4ed8; }
+        
+        /* Modifikasi warna untuk tombol spesifik */
+        .btn-export { background-color: #10b981; }
+        .btn-export:hover { background-color: #059669; }
+        
+        .btn-sort { background-color: #8b5cf6; }
+        .btn-sort:hover { background-color: #7c3aed; }
+
+        button.btn-edit {
+            background-color: #eab308;
+            padding: 6px 10px;
+            font-size: 0.85rem;
+            margin-right: 5px;
+        }
+        button.btn-edit:hover { background-color: #ca8a04; }
+
+        button.btn-delete {
+            background-color: #ef4444;
+            padding: 6px 10px;
+            font-size: 0.85rem;
+        }
+        button.btn-delete:hover { background-color: #b91c1c; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background-color: var(--background);
+            font-weight: 600;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 20px;
+            color: #64748b;
+            font-style: italic;
+        }
+
+        dialog {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            padding: 24px;
+            width: 90%;
+            max-width: 400px;
+        }
+
+        dialog::backdrop {
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .modal-form label {
+            font-weight: bold;
+            font-size: 0.9rem;
+            margin-bottom: -10px;
+            color: #475569;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn-cancel { background-color: #94a3b8; }
+        .btn-cancel:hover { background-color: #64748b; }
+        .text-muted { color: #94a3b8; font-style: italic; }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Warung Mbu <span>Manajemen Stok Barang & Eceran</span></h2>
+
+    <form id="formTambah" class="toolbar">
+        <input type="text" id="namaBarang" placeholder="Nama Barang (Cth: Susu UHT)" required>
+        <input type="number" id="hargaBarang" placeholder="Harga Utama/Karton" required min="0">
+        <input type="number" id="hargaPcs" placeholder="Harga Ecer (per Pcs)" required min="0">
+        <button type="submit">Tambah Barang</button>
+    </form>
+
+    <div class="toolbar">
+        <input type="text" id="kolomCari" placeholder="🔍 Cari nama barang...">
+        <button id="btnUrutkan" class="btn-sort" type="button">↕️ Urutkan (A-Z)</button>
+        <button id="btnEkspor" class="btn-export" type="button">📥 Ekspor (CSV)</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Nama Barang</th>
+                <th>Harga Utama (Rp)</th>
+                <th>Harga per Pcs (Rp)</th>
+                <th>Aksi</th>
+            </tr>
+        </thead>
+        <tbody id="tabelBarang">
+            </tbody>
+    </table>
+</div>
+
+<dialog id="modalEdit">
+    <h3 style="margin-top: 0; color: #2563eb; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px;">Edit Data Barang</h3>
+    <form id="formEdit" class="modal-form">
+        <input type="hidden" id="editId">
+        
+        <label for="editNama">Nama Barang</label>
+        <input type="text" id="editNama" required>
+        
+        <label for="editHarga">Harga Utama (Rp)</label>
+        <input type="number" id="editHarga" required min="0">
+        
+        <label for="editHargaPcs">Harga per Pcs (Rp) - Ketik 0 jika tidak ada</label>
+        <input type="number" id="editHargaPcs" required min="0">
+        
+        <div class="modal-actions">
+            <button type="button" class="btn-cancel" onclick="tutupModal()">Batal</button>
+            <button type="submit">Simpan Revisi</button>
+        </div>
+    </form>
+</dialog>
+
+<script>
+    const dataAwal = [
+        { id: 1774406869933, nama: "Kapal Api", harga: 2000, hargaPcs: 0 },
+        { id: 1774406888545, nama: "Mie goreng + rebus", harga: 3500, hargaPcs: 0 },
+        { id: 1774406902114, nama: "Tolak angin", harga: 4500, hargaPcs: 0 },
+        { id: 1774406911242, nama: "Hansaplast ", harga: 500, hargaPcs: 0 },
+        { id: 1774406924858, nama: "Salonpas cabe ", harga: 2000, hargaPcs: 0 },
+        { id: 1774406933609, nama: "Salonpas biasa ", harga: 1500, hargaPcs: 0 },
+        { id: 1774406971114, nama: "Rokok Djarum coklat", harga: 19000, hargaPcs: 0 },
+        { id: 1774406981255, nama: "Rokok Djarum super ", harga: 26000, hargaPcs: 0 },
+        { id: 1774407009965, nama: "Rokok Magnum ", harga: 28000, hargaPcs: 0 },
+        { id: 1774407018897, nama: "Rokok djisamsoe", harga: 22000, hargaPcs: 0 },
+        { id: 1774407042536, nama: "Gas elpiji", harga: 25000, hargaPcs: 0 },
+        { id: 1774407063151, nama: "Rokok djanaka", harga: 11000, hargaPcs: 0 },
+        { id: 1774407111035, nama: "Minyak rizki", harga: 18500, hargaPcs: 0 },
+        { id: 1774407118833, nama: "Minyak curah 1/4", harga: 6000, hargaPcs: 0 },
+        { id: 1774407125322, nama: "Minyak curah 1/2", harga: 12000, hargaPcs: 0 },
+        { id: 1774407162150, nama: "Minuman semua kecuali teh kotak 4.5", harga: 4000, hargaPcs: 0 },
+        { id: 1774407168971, nama: "Teh levonte ", harga: 1000, hargaPcs: 0 },
+        { id: 1774407182274, nama: "Stream mini", harga: 1000, hargaPcs: 0 },
+        { id: 1774407187565, nama: "Stream gede ", harga: 2500, hargaPcs: 0 },
+        { id: 1774407193517, nama: "Stream cup ", harga: 500, hargaPcs: 0 },
+        { id: 1774407226992, nama: "Beras 1kg", harga: 16500, hargaPcs: 0 },
+        { id: 1774407236065, nama: "Gula 1/2", harga: 10000, hargaPcs: 0 },
+        { id: 1774407241147, nama: "Gula 1/4", harga: 5000, hargaPcs: 0 },
+        { id: 1774407250667, nama: "Terigu biasa 1/2", harga: 5000, hargaPcs: 0 },
+        { id: 1774407260655, nama: "Terigu biasa 1/4", harga: 2500, hargaPcs: 0 },
+        { id: 1774407269785, nama: "Aci 1/4", harga: 4000, hargaPcs: 0 },
+        { id: 1774407274705, nama: "Aci 1/2 ", harga: 6000, hargaPcs: 0 },
+        { id: 1774407296237, nama: "Kerupuk biasa 1/4", harga: 6000, hargaPcs: 0 },
+        { id: 1774407302329, nama: "Kerupuk merah 1/4", harga: 7000, hargaPcs: 0 },
+        { id: 1774407338404, nama: "Kerupuk udang 1/4", harga: 12000, hargaPcs: 0 },
+        { id: 1774407343442, nama: "Emping 1/4", harga: 30000, hargaPcs: 0 },
+        { id: 1774407356107, nama: "Emping 1ons", harga: 12500, hargaPcs: 0 },
+        { id: 1774407377373, nama: "Pepsodent eco", harga: 6000, hargaPcs: 0 },
+        { id: 1774407383245, nama: "Ciptadent eco ", harga: 5000, hargaPcs: 0 },
+        { id: 1774407396677, nama: "Sabun lux", harga: 5000, hargaPcs: 0 },
+        { id: 1774407402093, nama: "Sabun lifebouy ", harga: 4500, hargaPcs: 0 },
+        { id: 1774407421180, nama: "Sabun give cair", harga: 3500, hargaPcs: 0 },
+        { id: 1774407443651, nama: "Sabun lux cair", harga: 5000, hargaPcs: 0 },
+        { id: 1774407448983, nama: "Tali rafia ", harga: 2000, hargaPcs: 0 },
+        { id: 1774407488499, nama: "Sabun Nuvo cair ", harga: 3500, hargaPcs: 0 },
+        { id: 1774407493848, nama: "Kayu putih", harga: 7500, hargaPcs: 0 },
+        { id: 1774407505629, nama: "Baterai ABC ", harga: 3000, hargaPcs: 0 },
+        { id: 1774407514756, nama: "Racik²", harga: 2000, hargaPcs: 0 },
+        { id: 1774407522182, nama: "Sasa bumbu ", harga: 3000, hargaPcs: 0 },
+        { id: 1774407535916, nama: "Agar swallow ", harga: 5000, hargaPcs: 0 },
+        { id: 1774407549449, nama: "Kecpa bango refill", harga: 3500, hargaPcs: 0 },
+        { id: 1774407557029, nama: "Kecap bango sachet ", harga: 1000, hargaPcs: 0 },
+        { id: 1774407560268, nama: "Kara", harga: 6000, hargaPcs: 0 },
+        { id: 1774407569209, nama: "Sasa micin", harga: 4000, hargaPcs: 0 },
+        { id: 1774407577439, nama: "Lavender ", harga: 500, hargaPcs: 0 },
+        { id: 1774407588083, nama: "Autan oren", harga: 1000, hargaPcs: 0 },
+        { id: 1774407593709, nama: "Bihunku ", harga: 1500, hargaPcs: 0 },
+        { id: 1774407597293, nama: "Boncabe ", harga: 1000, hargaPcs: 0 },
+        { id: 1774407606442, nama: "Ekonomi", harga: 1000, hargaPcs: 0 },
+        { id: 1774407625236, nama: "Daia", harga: 1000, hargaPcs: 0 },
+        { id: 1774407629444, nama: "Kispray ", harga: 500, hargaPcs: 0 },
+        { id: 1774407657163, nama: "Proklin", harga: 500, hargaPcs: 0 },
+        { id: 1774407664830, nama: "Molto", harga: 500, hargaPcs: 0 },
+        { id: 1774407668149, nama: "Rapika ", harga: 500, hargaPcs: 0 },
+        { id: 1774407674898, nama: "Pempers ", harga: 2500, hargaPcs: 0 },
+        { id: 1774407690124, nama: "Sariwangi", harga: 7000, hargaPcs: 0 },
+        { id: 1774407698698, nama: "Teh celup Sosro ", harga: 6000, hargaPcs: 0 },
+        { id: 1774407727769, nama: "Sikat gigi formula", harga: 5000, hargaPcs: 0 },
+        { id: 1774407746725, nama: "Tepung beras", harga: 4000, hargaPcs: 0 },
+        { id: 1774407758461, nama: "Garam", harga: 2500, hargaPcs: 0 },
+        { id: 1774407774647, nama: "Kapal api kecil", harga: 1000, hargaPcs: 0 },
+        { id: 1774407787266, nama: "Kental manis ", harga: 2000, hargaPcs: 0 },
+        { id: 1774407790946, nama: "Nutrisari", harga: 2000, hargaPcs: 0 },
+        { id: 1774407799305, nama: "Jahe merah 2", harga: 2500, hargaPcs: 0 },
+        { id: 1774407815280, nama: "Spons cuci", harga: 4000, hargaPcs: 0 },
+        { id: 1774407823319, nama: "Dancow ", harga: 4500, hargaPcs: 0 },
+        { id: 1774407831423, nama: "Goodday ", harga: 2000, hargaPcs: 0 },
+        { id: 1774407834578, nama: "ABC ", harga: 2000, hargaPcs: 0 },
+        { id: 1774407841086, nama: "Klin lantai ", harga: 500, hargaPcs: 0 },
+        { id: 1774407853839, nama: "Downy", harga: 500, hargaPcs: 0 },
+        { id: 1774407856925, nama: "Molto", harga: 500, hargaPcs: 0 },
+        { id: 1774407860671, nama: "Royco ", harga: 500, hargaPcs: 0 },
+        { id: 1774407885958, nama: "Protex ", harga: 1000, hargaPcs: 0 },
+        { id: 1774407901056, nama: "Saori", harga: 3000, hargaPcs: 0 },
+        { id: 1774407909684, nama: "Filma", harga: 8000, hargaPcs: 0 },
+        { id: 1774407920387, nama: "Pantene", harga: 1000, hargaPcs: 0 },
+        { id: 1774407936845, nama: "Desaku 2", harga: 2500, hargaPcs: 0 },
+        { id: 1774407947264, nama: "Kemiri bubuk", harga: 500, hargaPcs: 0 },
+        { id: 1774407978264, nama: "Sedaap kaldu 3", harga: 1000, hargaPcs: 0 },
+        { id: 1774407997167, nama: "Ladaku", harga: 1000, hargaPcs: 0 },
+        { id: 1774408009236, nama: "Torabika", harga: 2000, hargaPcs: 0 },
+        { id: 1774408035258, nama: "Nutrijel", harga: 2500, hargaPcs: 0 },
+        { id: 1774408060339, nama: "Mi dara", harga: 6000, hargaPcs: 0 },
+        { id: 1774408079879, nama: "Mi dara kecil", harga: 4000, hargaPcs: 0 },
+        { id: 1774408104265, nama: "Bihun filtra", harga: 4500, hargaPcs: 0 },
+        { id: 1774408120127, nama: "Soun mangkok", harga: 6000, hargaPcs: 0 },
+        { id: 1774408161701, nama: "Kopiko 3", harga: 1000, hargaPcs: 0 },
+        { id: 1774408167464, nama: "Permen biasa 4", harga: 1000, hargaPcs: 0 },
+        { id: 1774408181424, nama: "Yupi", harga: 500, hargaPcs: 0 },
+        { id: 1774408212508, nama: "Krupuk kecil", harga: 2000, hargaPcs: 0 },
+        { id: 1774408217356, nama: "Krupuk besar ", harga: 5000, hargaPcs: 0 },
+        { id: 1774408223166, nama: "Stick", harga: 2000, hargaPcs: 0 },
+        { id: 1774408275368, nama: "Vixal", harga: 5000, hargaPcs: 0 },
+        { id: 1774408325790, nama: "Samsu ecer", harga: 2000, hargaPcs: 0 },
+        { id: 1774408337398, nama: "Coklat 5/3pc", harga: 2000, hargaPcs: 0 },
+        { id: 1774408342028, nama: "Magnum ", harga: 2500, hargaPcs: 0 },
+        { id: 1774408354129, nama: "Djarum super", harga: 2500, hargaPcs: 0 },
+        { id: 1774408399325, nama: "Kemiri 1ons", harga: 7000, hargaPcs: 0 },
+        { id: 1774408406865, nama: "Bawang putih 1ons", harga: 5000, hargaPcs: 0 },
+        { id: 1774408435678, nama: "Sambal uleg", harga: 2000, hargaPcs: 0 }
+    ];
+
+    let inventoriData = localStorage.getItem('dataInventori');
+    let inventori = inventoriData ? JSON.parse(inventoriData) : (() => {
+        localStorage.setItem('dataInventori', JSON.stringify(dataAwal));
+        return dataAwal;
+    })();
+
+    const tabelBarang = document.getElementById('tabelBarang');
+    const formTambah = document.getElementById('formTambah');
+    const kolomCari = document.getElementById('kolomCari');
+    const btnEkspor = document.getElementById('btnEkspor');
+    const btnUrutkan = document.getElementById('btnUrutkan');
+    
+    const modalEdit = document.getElementById('modalEdit');
+    const formEdit = document.getElementById('formEdit');
+
+    let isAscending = true; // Indikator status urutan (A-Z)
+
+    const formatRupiah = (angka) => new Intl.NumberFormat('id-ID').format(angka);
+    const simpanData = () => localStorage.setItem('dataInventori', JSON.stringify(inventori));
+
+    const renderTabel = (data = inventori) => {
+        tabelBarang.innerHTML = '';
+        if (data.length === 0) {
+            tabelBarang.innerHTML = `<tr><td colspan="4" class="empty-state">Belum ada barang di Warung Mbu.</td></tr>`;
+            return;
+        }
+
+        data.forEach((barang) => {
+            const tr = document.createElement('tr');
+            const teksHargaPcs = barang.hargaPcs === 0 || !barang.hargaPcs 
+                ? '<span class="text-muted">-</span>' 
+                : `Rp ${formatRupiah(barang.hargaPcs)}`;
+
+            tr.innerHTML = `
+                <td>${barang.nama}</td>
+                <td>Rp ${formatRupiah(barang.harga)}</td>
+                <td>${teksHargaPcs}</td>
+                <td>
+                    <button class="btn-edit" onclick="bukaModalEdit(${barang.id})">Edit</button>
+                    <button class="btn-delete" onclick="hapusBarang(${barang.id})">Hapus</button>
+                </td>
+            `;
+            tabelBarang.appendChild(tr);
+        });
+    };
+
+    // Logika Pengurutan (Metode localeCompare untuk akurasi alfabet)
+    btnUrutkan.addEventListener('click', () => {
+        inventori.sort((a, b) => {
+            return isAscending 
+                ? a.nama.localeCompare(b.nama) 
+                : b.nama.localeCompare(a.nama);
+        });
+        
+        isAscending = !isAscending; // Balik status untuk klik berikutnya
+        btnUrutkan.innerHTML = isAscending ? "↕️ Urutkan (A-Z)" : "↕️ Urutkan (Z-A)";
+        
+        simpanData(); // Menyimpan posisi urutan baru ke Local Storage
+        renderTabel();
+    });
+
+    formTambah.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const barangBaru = {
+            id: Date.now(),
+            nama: document.getElementById('namaBarang').value,
+            harga: parseInt(document.getElementById('hargaBarang').value),
+            hargaPcs: parseInt(document.getElementById('hargaPcs').value) || 0
+        };
+        inventori.unshift(barangBaru); 
+        simpanData();
+        renderTabel();
+        formTambah.reset();
+        document.getElementById('namaBarang').focus();
+    });
+
+    window.bukaModalEdit = (id) => {
+        const barang = inventori.find(b => b.id === id);
+        if (barang) {
+            document.getElementById('editId').value = barang.id;
+            document.getElementById('editNama').value = barang.nama;
+            document.getElementById('editHarga').value = barang.harga;
+            document.getElementById('editHargaPcs').value = barang.hargaPcs || 0;
+            modalEdit.showModal();
+        }
+    };
+
+    window.tutupModal = () => modalEdit.close();
+
+    formEdit.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const id = parseInt(document.getElementById('editId').value);
+        const index = inventori.findIndex(b => b.id === id);
+        
+        if (index !== -1) {
+            inventori[index].nama = document.getElementById('editNama').value;
+            inventori[index].harga = parseInt(document.getElementById('editHarga').value);
+            inventori[index].hargaPcs = parseInt(document.getElementById('editHargaPcs').value) || 0;
+            
+            simpanData();
+            renderTabel();
+            tutupModal();
+        }
+    });
+
+    window.hapusBarang = (id) => {
+        if(confirm("Apakah Anda yakin ingin menghapus barang ini secara permanen?")) {
+            inventori = inventori.filter(b => b.id !== id);
+            simpanData();
+            renderTabel();
+        }
+    };
+
+    kolomCari.addEventListener('input', (e) => {
+        const kataKunci = e.target.value.toLowerCase();
+        renderTabel(inventori.filter(b => b.nama.toLowerCase().includes(kataKunci)));
+    });
+
+    btnEkspor.addEventListener('click', () => {
+        if (inventori.length === 0) return alert("Tidak ada data untuk diekspor.");
+        let isiCSV = "ID Barang,Nama Barang,Harga Utama (Rp),Harga per Pcs (Rp)\n";
+        inventori.forEach(b => isiCSV += `${b.id},"${b.nama}",${b.harga},${b.hargaPcs}\n`);
+        
+        const blob = new Blob([isiCSV], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = `Warung_Mbu_${new Date().toISOString().slice(0,10)}.csv`;
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    });
+
+    // Render Awal saat DOM selesai dimuat
+    renderTabel();
+</script>
+
+</body>
+</html>
